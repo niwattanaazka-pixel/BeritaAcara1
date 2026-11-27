@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aplikasi Pengawas Ujian - MTsN 4 Kerinci</title>
+<style>
+:root{--green:#176b45;--light:#eaf5ef;--ink:#1f2937}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6f4;color:var(--ink);font:15px/1.5 Arial,sans-serif}
+header{background:linear-gradient(120deg,#145b3b,#238653);color:#fff;padding:24px 16px;text-align:center}
+header h1{font-size:22px;margin:0 0 5px} header p{margin:0;font-size:14px}
+main{max-width:850px;margin:22px auto;padding:0 14px 35px}
+.panel{background:#fff;border:1px solid #dce7df;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 3px 12px #173b2510}
+h2{font-size:17px;color:var(--green);margin:0 0 15px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+label{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5cf;border-radius:8px;font:inherit;background:#fff}
+textarea{min-height:85px;resize:vertical}
+.full{grid-column:1/-1}
+.signature-wrap{border:1px dashed #8aa997;border-radius:9px;background:#fbfdfb;overflow:hidden}
+canvas{display:block;width:100%;height:180px;touch-action:none;cursor:crosshair}
+.hint{font-size:12px;color:#64748b;margin:6px 0 0}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:12px 18px;font-weight:700;cursor:pointer;font-size:14px}
+.primary{background:var(--green);color:#fff}.secondary{background:#e8efeb;color:#244b36}.danger{background:#fff0ef;color:#a52c24}
+.note{font-size:12px;color:#64748b;margin-top:12px}
+#printArea{display:none}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.full{grid-column:auto}header h1{font-size:19px}.panel{padding:16px}}
+@media print{
+ @page{size:A4;margin:18mm}
+ body{background:#fff;color:#000;font:12pt/1.45 "Times New Roman",serif}
+ header,.form-ui,.actions,.note{display:none!important}
+ main{max-width:none;margin:0;padding:0}
+ #printArea{display:block!important}
+ .print-title{text-align:center;border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:20px}
+ .print-title h1{font-size:16pt;margin:0 0 4px}.print-title h2{font-size:14pt;color:#000;margin:0}
+ .print-table{width:100%;border-collapse:collapse;margin:12px 0 18px}
+ .print-table td{padding:7px 5px;vertical-align:top}
+ .print-table td:first-child{width:32%}
+ .print-line{border-bottom:1px dotted #555;min-height:22px}
+ .signature-print{margin-top:28px;width:260px;margin-left:auto;text-align:center}
+ #printedSignature{max-width:230px;max-height:100px;object-fit:contain}
+ .signature-name{margin-top:5px;text-decoration:underline;font-weight:bold}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>MTsN 4 KERINCI</h1>
+ <p>Aplikasi Absensi dan Berita Acara Pengawas Ujian</p>
+</header>
+<main>
+ <div class="form-ui">
+  <section class="panel">
+   <h2>1. Data Pengawas dan Ujian</h2>
+   <div class="grid">
+    <div><label for="nama">Nama Pengawas *</label><input id="nama" placeholder="Nama lengkap" required></div>
+    <div><label for="nip">NIP / NIK</label><input id="nip" placeholder="Nomor identitas"></div>
+    <div><label for="ruang">Ruang Ujian *</label><input id="ruang" placeholder="Contoh: Ruang 1" required></div>
+    <div><label for="kelas">Kelas *</label><input id="kelas" placeholder="Contoh: VII A" required></div>
+    <div><label for="mapel">Mata Pelajaran *</label><input id="mapel" placeholder="Nama mata pelajaran" required></div>
+    <div><label for="tanggal">Tanggal Ujian *</label><input id="tanggal" type="date" required></div>
+    <div><label for="sesi">Sesi</label><input id="sesi" placeholder="Contoh: Sesi 1"></div>
+    <div><label for="waktu">Waktu Pelaksanaan</label><input id="waktu" placeholder="Contoh: 07.30–09.00 WIB"></div>
+   </div>
+  </section>
+  <section class="panel">
+   <h2>2. Berita Acara Pelaksanaan Ujian</h2>
+   <div class="grid">
+    <div><label for="hadir">Jumlah Peserta Hadir</label><input id="hadir" type="number" min="0" placeholder="0"></div>
+    <div><label for="tidak">Jumlah Peserta Tidak Hadir</label><input id="tidak" type="number" min="0" placeholder="0"></div>
+    <div class="full"><label for="catatan">Catatan / Kejadian Khusus</label><textarea id="catatan" placeholder="Tuliskan jika ada kendala. Jika tidak ada, tulis: Nihil."></textarea></div>
+    <div class="full"><label for="lain">Keterangan Tambahan (opsional)</label><textarea id="lain" placeholder="Keterangan tambahan"></textarea></div>
+   </div>
+  </section>
+  <section class="panel">
+   <h2>3. Tanda Tangan Pengawas</h2>
+   <div class="signature-wrap"><canvas id="signature" aria-label="Area tanda tangan"></canvas></div>
+   <p class="hint">Bubuhkan tanda tangan menggunakan mouse, layar sentuh, atau stylus pada kotak di atas.</p>
+   <div class="actions" style="margin-top:12px"><button class="secondary" type="button" id="clearSign">Hapus Tanda Tangan</button></div>
+  </section>
+  <section class="panel">
+   <div class="actions">
+    <button class="primary" type="button" id="makePdf">SIMPAN / CETAK PDF</button>
+    <button class="secondary" type="button" id="reset">Kosongkan Formulir</button>
+   </div>
+   <p class="note">Tekan “Simpan / Cetak PDF”, lalu pilih “Save as PDF / Simpan sebagai PDF” pada jendela cetak. Aplikasi ini dapat digunakan langsung di browser.</p>
+  </section>
+ </div>
+ <section id="printArea">
+  <div class="print-title"><h1>MADRASAH TSANAWIYAH NEGERI 4 KERINCI</h1><h2>DAFTAR HADIR DAN BERITA ACARA PENGAWAS UJIAN</h2></div>
+  <p>Yang bertanda tangan di bawah ini adalah pengawas ujian pada MTsN 4 Kerinci, dengan data sebagai berikut:</p>
+  <table class="print-table" id="dataTable"></table>
+  <p><b>Berita Acara:</b></p>
+  <p>Pada hari/tanggal tersebut di atas telah dilaksanakan ujian dengan jumlah peserta sebagaimana tercantum. Pelaksanaan ujian berlangsung sesuai ketentuan, dengan catatan/keterangan sebagai berikut:</p>
+  <p id="printCatatan" class="print-line"></p>
+  <p id="printLain"></p>
+  <p>Demikian berita acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.</p>
+  <div class="signature-print">
+   <p>Kerinci, <span id="printTanggal"></span><br>Pengawas Ujian,</p>
+   <img id="printedSignature" alt="Tanda tangan pengawas">
+   <div class="signature-name" id="printNama"></div>
+   <div id="printNip"></div>
+  </div>
+ </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('signature'),ctx=canvas.getContext('2d');
+let drawing=false,hasSignature=false;
+function resizeCanvas(){
+ const ratio=Math.max(window.devicePixelRatio||1,1),rect=canvas.getBoundingClientRect();
+ const old=hasSignature?canvas.toDataURL():null;
+ canvas.width=rect.width*ratio;canvas.height=180*ratio;
+ ctx.setTransform(ratio,0,0,ratio,0,0);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#172b22';
+ if(old){const im=new Image();im.onload=()=>ctx.drawImage(im,0,0,rect.width,180);im.src=old;}
+}
+function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener('pointerdown',e=>{drawing=true;canvas.setPointerCapture(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});
+canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasSignature=true});
+function stop(){drawing=false;ctx.beginPath()}
+canvas.addEventListener('pointerup',stop);canvas.addEventListener('pointercancel',stop);
+$('clearSign').onclick=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);hasSignature=false};
+window.addEventListener('resize',resizeCanvas);resizeCanvas();
+function val(id){return $(id).value.trim()}
+function dateText(v){if(!v)return '';const d=new Date(v+'T00:00:00');return d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}
+$('makePdf').onclick=()=>{
+ const required=['nama','ruang','kelas','mapel','tanggal'];
+ for(const id of required){if(!val(id)){alert('Mohon lengkapi data wajib yang bertanda *.');$(id).focus();return}}
+ if(!hasSignature){alert('Mohon bubuhkan tanda tangan terlebih dahulu.');return}
+ const rows=[
+ ['Nama Pengawas',val('nama')],['NIP / NIK',val('nip')||'-'],['Ruang Ujian',val('ruang')],
+ ['Kelas',val('kelas')],['Mata Pelajaran',val('mapel')],['Tanggal',dateText(val('tanggal'))],
+ ['Sesi',val('sesi')||'-'],['Waktu',val('waktu')||'-'],
+ ['Jumlah Peserta Hadir',val('hadir')||'0'],['Jumlah Peserta Tidak Hadir',val('tidak')||'0']
+ ];
+ $('dataTable').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>: ${escapeHtml(r[1])}</td></tr>`).join('');
+ $('printCatatan').textContent=val('catatan')||'Nihil.';
+ $('printLain').textContent=val('lain')?'Keterangan tambahan: '+val('lain'):'';
+ $('printTanggal').textContent=dateText(val('tanggal'));
+ $('printNama').textContent=val('nama');
+ $('printNip').textContent=val('nip')?'NIP/NIK. '+val('nip'):'';
+ $('printedSignature').src=canvas.toDataURL('image/png');
+ window.print();
+};
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('reset').onclick=()=>{if(!confirm('Kosongkan semua isian dan tanda tangan?'))return;document.querySelectorAll('input,textarea').forEach(e=>e.value='');$('clearSign').click()};
+</script>
+</body></html>
